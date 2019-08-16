@@ -74,13 +74,13 @@ void dbManager::start(QStandardItemModel* view,QPushButton* exit ){
         //every idx
         while(query.next()){
             QSqlQuery query2(QSqlDatabase::database("Destination"));
-            QString q2=QString("ALTER INDEX %1 INACTIVE").arg(query.value(0).toString());
+            QString q2=QString("drop INDEX %1 ").arg(query.value(0).toString());
             if(!query2.exec(q2)){
-                qDebug()<<"disactive index "<<query.value(0).toString()<<" Failed "<<query2.lastError().text() ;
-                addLog(view,"ERROR","disactive index "+query.value(0).toString()+" Failed "+query2.lastError().text());
+                qDebug()<<"drop index "<<query.value(0).toString()<<" Failed "<<query2.lastError().text() ;
+                addLog(view,"ERROR","drop index "+query.value(0).toString()+" Failed "+query2.lastError().text());
             }else{
-                qDebug()<<"disactive index "<<query.value(0).toString()<<" successfully " ;
-                addLog(view,"info","disactive index "+query.value(0).toString()+" successfully ");
+                qDebug()<<"drop index "<<query.value(0).toString()<<" successfully " ;
+                addLog(view,"info","drop index "+query.value(0).toString()+" successfully ");
 
             }
         }
@@ -101,18 +101,27 @@ void dbManager::start(QStandardItemModel* view,QPushButton* exit ){
         int totalData=0;
         //A table
         while(query3.next()){
+
             QString tabName=query3.value(0).toString();
             int data=0;
+            QSqlQuery delite(QSqlDatabase::database("Destination"));
+            if(delite.exec(QString("delete from %1").arg(tabName))){
+                addLog(view,"INFO","deleted table " +tabName+" from destination");
+            }else{
+                addLog(view,"ERROR","deleted table "+tabName+delite.lastError().text());
+            }
+
             qDebug()<<"transfering table "<< tabName;
             addLog(view,"INFO","transfering table " +tabName);
 
-            QSqlTableModel *model = new QSqlTableModel(nullptr,QSqlDatabase::database("source"));
+            QSqlTableModel *model = new QSqlTableModel(nullptr,QSqlDatabase::database("Source"));
             model->setTable(tabName);
             model->select();
-            QSqlTableModel *model_des = new QSqlTableModel(nullptr,QSqlDatabase::database("source"));
+            QSqlTableModel *model_des = new QSqlTableModel(nullptr,QSqlDatabase::database("Destination"));
             model_des->setTable(tabName);
             model_des->setEditStrategy(QSqlTableModel::OnManualSubmit);
             model_des->select();
+
             for(int i=0;i<model->rowCount();i++){
                 data++;
                 QSqlRecord rec=model->record(i);
@@ -126,10 +135,10 @@ void dbManager::start(QStandardItemModel* view,QPushButton* exit ){
                     totalData+=data;
                 }
             }
-            qDebug()<<"total "<<totalData << "pieces of data transferered . Finished";
-            addLog(view,"INFO","total "+QString::number(totalData) +"pieces of data transferered Finished");
-
         }
+        qDebug()<<"total "<<totalData << "pieces of data transferered . Finished";
+        addLog(view,"INFO","total "+QString::number(totalData) +"pieces of data transferered Finished");
+
 
 
         //active idx
@@ -153,7 +162,7 @@ void dbManager::start(QStandardItemModel* view,QPushButton* exit ){
             }
         }
 
-         exit->setEnabled(true);
+        exit->setEnabled(true);
     }
 
 }
