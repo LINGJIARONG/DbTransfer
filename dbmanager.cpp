@@ -1,5 +1,8 @@
 #include "dbmanager.h"
 #include <QDebug>
+#include <QSqlTableModel>
+#include <QDateTime>
+#include <QPushButton>
 dbManager::dbManager()
 {
 
@@ -39,9 +42,19 @@ void dbManager::connectDestination(QString url, QString database, QString userna
     }
 }
 
-void dbManager::start(){
+void addLog(QStandardItemModel* model,QString type,QString text){
+    QString log=QString("%1 [%2] %3 ").arg(QDateTime::currentDateTime().toString())
+            .arg(type).arg(text);
+    QStandardItem *item = new QStandardItem(log);
+    item->setBackground(Qt::white);
+    item->setEditable(false);
+    model->appendRow(item);
+}
+
+void dbManager::start(QStandardItemModel* view,QPushButton* exit ){
     qDebug()<<"Start transfering ...";
-    qDebug()<<"Closing idx  ...";
+    addLog(view,"info","Start transfering ...");
+
     //close index
     QSqlQuery query(QSqlDatabase::database("Destination"));
     QString q1="select rdb$index_name "
@@ -51,15 +64,21 @@ void dbManager::start(){
     //find idx
     if(!query.prepare(q1)){
         qDebug()<<query.lastError().text();
+        addLog(view,"Error",query.lastError().text());
+
     }else{
         query.exec();
+        //every idx
         while(query.next()){
             QSqlQuery query2(QSqlDatabase::database("Destination"));
             QString q2=QString("ALTER INDEX %1 INACTIVE").arg(query.value(0).toString());
             if(!query2.exec(q2)){
-                qDebug()<<"disactive index "<<query.value(0).toString()<<" succefully " ;
+                qDebug()<<"disactive index "<<query.value(0).toString()<<" Failed "<<query2.lastError().text() ;
+                addLog(view,"ERROR","disactive index "+query.value(0).toString()+" Failed "+query2.lastError().text());
             }else{
-                qDebug()<<"disactive index "<<query.value(0).toString()<<" succefully " ;
+                qDebug()<<"disactive index "<<query.value(0).toString()<<" successfully " ;
+                addLog(view,"info","disactive index "+query.value(0).toString()+" successfully ");
+
             }
         }
     }
@@ -72,6 +91,8 @@ void dbManager::start(){
                " and (rdb$system_flag is null or rdb$system_flag = 0);";
     if(!query3.prepare(q3)){
         qDebug()<<"search all tables from source : " <<query3.lastError().text();
+        addLog(view,"Error","search all the tables from source : " +query3.lastError().text());
+
     }else{
         query3.exec();
         int totalData=0;
@@ -80,61 +101,59 @@ void dbManager::start(){
             QString tabName=query3.value(0).toString();
             int data=0;
             qDebug()<<"transfering table "<< tabName;
-            QString sourceData=QString("select * from %1 ").arg(tabName);
-            //get datas
-            QSqlQuery query4(QSqlDatabase::database("Source"));
-            if(!query4.exec(sourceData)){
-                qDebug()<<"can't find data from "<<tabName;
-            }else{
-                // A data
-                while(query4.next()){
-                    //copy to destination
-                    QSqlRecord rec=query4.record();
-                    //insert into tabNmae values(
-                    //xi,
-                    //xfinal)
-                    QString insert=QString(" insert into %1 values( ").arg(tabName);
-                    for(int i=0;i<rec.count()-1;i++){
-                        insert.append(QString("%1,").arg(query4.value(i).toString()));
-                    }
-                    if(rec.count()-1!=0){
-                        insert.append(query4.value(rec.count()-1).toString());
-                        insert.append(")");
-                    }
-                    if(!query.prepare(insert)){
-                        qDebug()<< insert<<query.lastError().text();
-                    }else{
-                        if(query.exec())
-                            data++;
-                    }
+            addLog(view,"INFO","transfering table " +tabName);
+
+            QSqlTableModel *model = new QSqlTableModel(nullptr,QSqlDatabase::database("source"));
+            model->setTable(tabName);
+            model->select();
+            QSqlTableModel *model_des = new QSqlTableModel(nullptr,QSqlDatabase::database("source"));
+            model_des->setTable(tabName);
+            model_des->setEditStrategy(QSqlTableModel::OnManualSubmit);
+            model_des->select();
+            for(int i=0;i<model->rowCount();i++){
+                data++;
+                QSqlRecord rec=model->record(i);
+                model_des->insertRecord(-1,rec);
+            }
+            if(model->rowCount()!=0){
+                if(model_des->submitAll()){
+                    qDebug()<<data<<" datas transfer successfully from table "<<tabName;
+                    qDebug()<<"submit " << tabName<<" successfully";
+                    addLog(view,"INFO"," datas transfer successfully from table " +tabName);
+                    totalData+=data;
                 }
             }
-            qDebug()<<data<<" datas transfer successfully from table "<<tabName;
-            totalData+=data;
+            qDebug()<<"total "<<totalData << "pieces of data transferered . Finished";
+            addLog(view,"INFO","total "+QString::number(totalData) +"pieces of data transferered Finished");
+
         }
-        qDebug()<<"total "<<totalData << "pieces of data transferered . Finished";
 
 
         //active idx
         if(!query.prepare(q1)){
             qDebug()<<query.lastError().text();
+            addLog(view,"ERROR",query.lastError().text());
+
         }else{
             query.exec();
             while(query.next()){
                 QSqlQuery query2(QSqlDatabase::database("Destination"));
                 QString q2=QString("ALTER INDEX %1 ACTIVE").arg(query.value(0).toString());
+
                 if(!query2.exec(q2)){
-                    qDebug()<<"active index "<<query.lastError().text();
+                    qDebug()<<"active index "<<query2.lastError().text();
+                    addLog(view,"ERROR",query2.lastError().text());
                 }else{
-                    qDebug()<<"active index "<<query.value(0).toString()<<" succefully " ;
+                    qDebug()<<"active index "<<query.value(0).toString()<<" successfully " ;
+                    addLog(view,"INFO",query2.lastError().text());
                 }
             }
         }
 
     }
 
-
-
 }
+
+
 
 
