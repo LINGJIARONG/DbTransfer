@@ -8,7 +8,7 @@ dbManager::dbManager()
 
 }
 
-void dbManager::connectSource(QString url, QString database, QString username, QString password, QString charset)
+bool dbManager::connectSource(QString url, QString database, QString username, QString password, QString charset)
 {
 
     QSqlDatabase fDb = QSqlDatabase::addDatabase("QIBASE", "Source");
@@ -19,13 +19,14 @@ void dbManager::connectSource(QString url, QString database, QString username, Q
     fDb.setConnectOptions(QString("ISC_DPB_LC_CTYPE=%1").arg(charset));
     if(fDb.open()){
         qDebug()<<"connect to source successfully";
+        return true;
     }else{
         qDebug()<<"fail to connect to source ";
-
+        return false;
     }
 }
 
-void dbManager::connectDestination(QString url, QString database, QString username, QString password, QString charset)
+bool dbManager::connectDestination(QString url, QString database, QString username, QString password, QString charset)
 {
 
     QSqlDatabase fDb = QSqlDatabase::addDatabase("QIBASE", "Destination");
@@ -36,15 +37,17 @@ void dbManager::connectDestination(QString url, QString database, QString userna
     fDb.setConnectOptions(QString("ISC_DPB_LC_CTYPE=%1").arg(charset));
     if(fDb.open()){
         qDebug()<<"connect to destination successfully";
+        return true;
     }else{
         qDebug()<<"fail to connect to destination ";
+        return false;
 
     }
 }
 
 void addLog(QStandardItemModel* model,QString type,QString text){
     QString log=QString("%1 [%2] %3 ").arg(QDateTime::currentDateTime().toString())
-            .arg(type).arg(text);
+            .arg(type).arg(text.trimmed());
     QStandardItem *item = new QStandardItem(log);
     item->setBackground(Qt::white);
     item->setEditable(false);
@@ -145,11 +148,12 @@ void dbManager::start(QStandardItemModel* view,QPushButton* exit ){
                     addLog(view,"ERROR",query2.lastError().text());
                 }else{
                     qDebug()<<"active index "<<query.value(0).toString()<<" successfully " ;
-                    addLog(view,"INFO",query2.lastError().text());
+                    addLog(view,"INFO",query.value(0).toString()+" successfully ");
                 }
             }
         }
 
+         exit->setEnabled(true);
     }
 
 }

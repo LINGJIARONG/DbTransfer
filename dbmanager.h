@@ -12,9 +12,9 @@ class dbManager
 {
 public:
     dbManager();
-    static void connectDestination(QString url,QString database,QString username,QString password,QString charset);
-    static void connectSource(QString url,QString database,QString username,QString password,QString charset);
-    static void  start(QStandardItemModel* model,QPushButton * button);
+    static bool connectDestination(QString url,QString database,QString username,QString password,QString charset);
+    static bool connectSource(QString url,QString database,QString username,QString password,QString charset);
+    static void start(QStandardItemModel* model,QPushButton * button);
 
 };
 

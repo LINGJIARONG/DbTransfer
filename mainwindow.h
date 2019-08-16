@@ -2,6 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QStandardItemModel>
+
 
 namespace Ui {
 class MainWindow;
@@ -17,6 +19,17 @@ public:
 
 private:
     Ui::MainWindow *ui;
+    QStringList strList;
+    QStandardItemModel * standardItemModel;
+
+private slots:
+
+    void startBtnClicked();
+    void srcConnectBtnClicked();
+    void targetConnectBtnClicked();
+    void finishBtnClicked();
+    void exitBtnClicked();
+
 };
 
 #endif // MAINWINDOW_H
